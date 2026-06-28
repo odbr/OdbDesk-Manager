@@ -3,54 +3,185 @@
 {% block conteudo %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold">Detalhes do Chamado #{{ chamado[0] }}</h2>
+    <div>
+        <h2 class="fw-bold">Chamado #{{ chamado[0] }}</h2>
+        <p class="text-muted mb-0">Detalhes, comentários e histórico do chamado.</p>
+    </div>
 
     <a href="/chamados" class="btn btn-secondary">
         Voltar
     </a>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="card-body">
+<div class="row g-4">
 
-        <h4 class="fw-bold mb-3">
-            {{ chamado[1] }}
-        </h4>
+    <div class="col-lg-8">
 
-        <p>
-            <strong>Descrição:</strong><br>
-            {{ chamado[2] }}
-        </p>
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
 
-        <p>
-            <strong>Prioridade:</strong>
-            {{ chamado[3] }}
-        </p>
+                <h4 class="fw-bold mb-3">
+                    {{ chamado[1] }}
+                </h4>
 
-        <p>
-            <strong>Status:</strong>
-            {{ chamado[4] }}
-        </p>
+                <div class="mb-3">
+                    {% if chamado[3] == 'ALTA' %}
+                        <span class="badge bg-danger">Prioridade Alta</span>
+                    {% elif chamado[3] == 'MEDIA' %}
+                        <span class="badge bg-warning text-dark">Prioridade Média</span>
+                    {% else %}
+                        <span class="badge bg-success">Prioridade Baixa</span>
+                    {% endif %}
 
-        <p>
-            <strong>Data de abertura:</strong>
-            {{ chamado[5] }}
-        </p>
+                    {% if chamado[4] == 'ABERTO' %}
+                        <span class="badge bg-primary">Aberto</span>
+                    {% elif chamado[4] == 'EM ANDAMENTO' %}
+                        <span class="badge bg-warning text-dark">Em Andamento</span>
+                    {% elif chamado[4] == 'CONCLUIDO' %}
+                        <span class="badge bg-success">Concluído</span>
+                    {% endif %}
+                </div>
 
-        {% if chamado[7] %}
-            <hr>
+                <p class="mb-1">
+                    <strong>Descrição:</strong>
+                </p>
 
-            <p>
-                <strong>Imagem anexada:</strong>
-            </p>
+                <p class="text-muted">
+                    {{ chamado[2] }}
+                </p>
 
-            <img src="{{ url_for('ver_upload', filename=chamado[7]) }}"
-                 class="img-fluid rounded shadow-sm"
-                 style="max-width: 700px;"
-                 alt="Imagem anexada ao chamado">
-        {% endif %}
+                <p>
+                    <strong>Data de abertura:</strong>
+                    {{ chamado[5] }}
+                </p>
+
+                {% if chamado[7] %}
+                    <hr>
+
+                    <p class="fw-bold">
+                        Imagem anexada
+                    </p>
+
+                    <img src="{{ url_for('ver_upload', filename=chamado[7]) }}"
+                         class="img-fluid rounded shadow-sm"
+                         style="max-width: 100%;"
+                         alt="Imagem anexada ao chamado">
+                {% endif %}
+
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+
+                <h5 class="fw-bold mb-4">
+                    Comentários
+                </h5>
+
+                {% if comentarios %}
+
+                    {% for comentario in comentarios %}
+
+                        <div class="comentario-box mb-3">
+
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ comentario[3] }}</strong>
+                                <small class="text-muted">
+                                    {{ comentario[2] }}
+                                </small>
+                            </div>
+
+                            <p class="mb-0 mt-2">
+                                {{ comentario[1] }}
+                            </p>
+
+                        </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <p class="text-muted">
+                        Nenhum comentário adicionado ainda.
+                    </p>
+
+                {% endif %}
+
+                <hr>
+
+                <form action="/comentar/{{ chamado[0] }}" method="POST">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            Adicionar comentário
+                        </label>
+
+                        <textarea name="comentario"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Digite uma atualização sobre este chamado..."
+                                  required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Enviar comentário
+                    </button>
+
+                </form>
+
+            </div>
+        </div>
 
     </div>
+
+    <div class="col-lg-4">
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+
+                <h5 class="fw-bold mb-4">
+                    Linha do tempo
+                </h5>
+
+                {% if timeline %}
+
+                    <div class="timeline">
+
+                        {% for item in timeline %}
+
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+
+                                <div class="timeline-content">
+                                    <p class="mb-1 fw-bold">
+                                        {{ item[1] }}
+                                    </p>
+
+                                    <small class="text-muted">
+                                        {{ item[3] if item[3] else 'Sistema' }}
+                                        ·
+                                        {{ item[2] }}
+                                    </small>
+                                </div>
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <p class="text-muted">
+                        Nenhuma movimentação registrada.
+                    </p>
+
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+
 </div>
 
 {% endblock %}

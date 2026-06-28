@@ -55,6 +55,30 @@ def criar_banco():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS comentarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chamado_id INTEGER NOT NULL,
+            usuario_id INTEGER NOT NULL,
+            comentario TEXT NOT NULL,
+            data_comentario DATETIME,
+            FOREIGN KEY(chamado_id) REFERENCES chamados(id),
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS timeline (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chamado_id INTEGER NOT NULL,
+            usuario_id INTEGER,
+            acao TEXT NOT NULL,
+            data_acao DATETIME,
+            FOREIGN KEY(chamado_id) REFERENCES chamados(id),
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -238,7 +262,7 @@ def salvar_chamado():
             imagem
         )
         VALUES
-        (?, ?, ?, ?, datetime('now'), ?, ?)
+        (?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)
     """, (
         titulo,
         descricao,
@@ -246,6 +270,18 @@ def salvar_chamado():
         'ABERTO',
         usuario_id,
         nome_imagem
+    ))
+
+    chamado_id = cursor.lastrowid
+
+    cursor.execute("""
+        INSERT INTO timeline
+        (chamado_id, usuario_id, acao, data_acao)
+        VALUES (?, ?, ?, datetime('now', 'localtime'))
+    """, (
+        chamado_id,
+        usuario_id,
+        'Chamado criado'
     ))
 
     conn.commit()
@@ -265,7 +301,15 @@ def listar_chamados():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT *
+        SELECT
+            id,
+            titulo,
+            descricao,
+            prioridade,
+            status,
+            strftime('%d/%m/%Y %H:%M:%S', data_abertura) AS data_abertura,
+            usuario_id,
+            imagem
         FROM chamados
         ORDER BY id DESC
     """)
@@ -288,21 +332,102 @@ def detalhe_chamado(id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT *
+        SELECT
+            id,
+            titulo,
+            descricao,
+            prioridade,
+            status,
+            strftime('%d/%m/%Y %H:%M:%S', data_abertura) AS data_abertura,
+            usuario_id,
+            imagem
         FROM chamados
         WHERE id = ?
     """, (id,))
 
     chamado = cursor.fetchone()
-    conn.close()
 
     if chamado is None:
+        conn.close()
         return redirect('/chamados')
+
+    cursor.execute("""
+        SELECT
+            comentarios.id,
+            comentarios.comentario,
+            strftime('%d/%m/%Y %H:%M:%S', comentarios.data_comentario) AS data_comentario,
+            usuarios.nome
+        FROM comentarios
+        INNER JOIN usuarios
+            ON comentarios.usuario_id = usuarios.id
+        WHERE comentarios.chamado_id = ?
+        ORDER BY comentarios.id ASC
+    """, (id,))
+
+    comentarios = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT
+            timeline.id,
+            timeline.acao,
+            strftime('%d/%m/%Y %H:%M:%S', timeline.data_acao) AS data_acao,
+            usuarios.nome
+        FROM timeline
+        LEFT JOIN usuarios
+            ON timeline.usuario_id = usuarios.id
+        WHERE timeline.chamado_id = ?
+        ORDER BY timeline.id ASC
+    """, (id,))
+
+    timeline = cursor.fetchall()
+
+    conn.close()
 
     return render_template(
         'detalhe_chamado.html',
-        chamado=chamado
+        chamado=chamado,
+        comentarios=comentarios,
+        timeline=timeline
     )
+
+
+@app.route('/comentar/<int:chamado_id>', methods=['POST'])
+def comentar_chamado(chamado_id):
+    if 'usuario_id' not in session:
+        return redirect('/login')
+
+    comentario = request.form['comentario']
+
+    if comentario.strip() == '':
+        return redirect(f'/chamado/{chamado_id}')
+
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO comentarios
+        (chamado_id, usuario_id, comentario, data_comentario)
+        VALUES (?, ?, ?, datetime('now', 'localtime'))
+    """, (
+        chamado_id,
+        session['usuario_id'],
+        comentario
+    ))
+
+    cursor.execute("""
+        INSERT INTO timeline
+        (chamado_id, usuario_id, acao, data_acao)
+        VALUES (?, ?, ?, datetime('now', 'localtime'))
+    """, (
+        chamado_id,
+        session['usuario_id'],
+        'Novo comentário adicionado'
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(f'/chamado/{chamado_id}')
 
 
 @app.route('/status/<int:id>/<status>')
@@ -320,6 +445,16 @@ def atualizar_status(id, status):
         SET status = ?
         WHERE id = ?
     """, (status, id))
+
+    cursor.execute("""
+        INSERT INTO timeline
+        (chamado_id, usuario_id, acao, data_acao)
+        VALUES (?, ?, ?, datetime('now', 'localtime'))
+    """, (
+        id,
+        session['usuario_id'],
+        f'Status alterado para {status}'
+    ))
 
     conn.commit()
     conn.close()
@@ -353,7 +488,7 @@ def api_chamados():
             titulo,
             prioridade,
             status,
-            data_abertura
+            strftime('%d/%m/%Y %H:%M:%S', data_abertura) AS data_abertura
         FROM chamados
     """)
 
