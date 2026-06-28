@@ -1,6 +1,10 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import sqlite3
 import os
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_do_sistema'
@@ -39,6 +43,32 @@ def criar_banco():
     conn.commit()
     conn.close()
 
+def gerar_grafico_prioridade():
+    conn = sqlite3.connect('database.db')
+
+    df = pd.read_sql_query("""
+        SELECT prioridade
+        FROM chamados
+    """, conn)
+
+    conn.close()
+
+    pasta_graficos = os.path.join('static', 'graficos')
+
+    if not os.path.exists(pasta_graficos):
+        os.makedirs(pasta_graficos)
+
+    caminho_grafico = os.path.join(pasta_graficos, 'prioridade.png')
+
+    if len(df) > 0:
+        plt.figure(figsize=(6, 4))
+        df['prioridade'].value_counts().plot(kind='bar')
+        plt.title('Chamados por Prioridade')
+        plt.xlabel('Prioridade')
+        plt.ylabel('Quantidade')
+        plt.tight_layout()
+        plt.savefig(caminho_grafico)
+        plt.close()
 
 @app.route('/')
 def home():
@@ -61,6 +91,8 @@ def home():
     chamados_concluidos = cursor.fetchone()[0]
 
     conn.close()
+
+    gerar_grafico_prioridade()
 
     return render_template(
         'dashboard.html',
