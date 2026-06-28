@@ -4,7 +4,9 @@
 
 <div class="mb-4">
     <h2 class="page-title">Dashboard</h2>
-    <p class="text-muted">Bem-vindo, {{ nome }}! Acompanhe seus chamados.</p>
+    <p class="text-muted">
+        Bem-vindo, {{ nome }}! Acompanhe seus chamados.
+    </p>
 </div>
 
 <div class="row g-4">
@@ -49,11 +51,17 @@
 
 <div class="card shadow-sm border-0 mt-4">
     <div class="card-body">
-        <h5 class="fw-bold">Chamados por Prioridade</h5>
 
-        <img src="{{ url_for('static', filename='graficos/prioridade.png') }}"
-             class="img-fluid mt-3"
-             alt="Gráfico de chamados por prioridade">
+        <h5 class="fw-bold text-center mb-4">
+            Chamados por Prioridade
+        </h5>
+
+        <div class="grafico-container">
+            <img src="{{ url_for('static', filename='graficos/prioridade.png') }}"
+                 class="grafico-dashboard"
+                 alt="Gráfico de chamados por prioridade">
+        </div>
+
     </div>
 </div>
 

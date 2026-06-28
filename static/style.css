@@ -76,3 +76,16 @@ body {
     height: 48px;
     border-radius: 10px;
 }
+
+.grafico-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.grafico-dashboard {
+    max-width: 700px;
+    width: 100%;
+    height: auto;
+}

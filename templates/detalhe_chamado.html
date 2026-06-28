@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold">Detalhes do Chamado #{{ chamado[0] }}</h2>
+
+    <a href="/chamados" class="btn btn-secondary">
+        Voltar
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+
+        <h4 class="fw-bold mb-3">
+            {{ chamado[1] }}
+        </h4>
+
+        <p>
+            <strong>Descrição:</strong><br>
+            {{ chamado[2] }}
+        </p>
+
+        <p>
+            <strong>Prioridade:</strong>
+            {{ chamado[3] }}
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            {{ chamado[4] }}
+        </p>
+
+        <p>
+            <strong>Data de abertura:</strong>
+            {{ chamado[5] }}
+        </p>
+
+        {% if chamado[7] %}
+            <hr>
+
+            <p>
+                <strong>Imagem anexada:</strong>
+            </p>
+
+            <img src="{{ url_for('ver_upload', filename=chamado[7]) }}"
+                 class="img-fluid rounded shadow-sm"
+                 style="max-width: 700px;"
+                 alt="Imagem anexada ao chamado">
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,50 +1,66 @@
-from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 import sqlite3
 import os
 import pandas as pd
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_do_sistema'
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+GRAFICOS_FOLDER = os.path.join(BASE_DIR, 'static', 'graficos')
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+
+def criar_pastas():
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(GRAFICOS_FOLDER, exist_ok=True)
+
+
+def conectar_banco():
+    return sqlite3.connect(os.path.join(BASE_DIR, 'database.db'))
+
+
 def criar_banco():
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        senha TEXT NOT NULL,
-        perfil TEXT NOT NULL
-    )
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            senha TEXT NOT NULL,
+            perfil TEXT NOT NULL
+        )
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS chamados (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulo TEXT NOT NULL,
-        descricao TEXT,
-        prioridade TEXT NOT NULL,
-        status TEXT NOT NULL,
-        data_abertura DATETIME,
-        usuario_id INTEGER,
-        imagem TEXT,
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-    )
+        CREATE TABLE IF NOT EXISTS chamados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            descricao TEXT,
+            prioridade TEXT NOT NULL,
+            status TEXT NOT NULL,
+            data_abertura DATETIME,
+            usuario_id INTEGER,
+            imagem TEXT,
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+        )
     """)
 
     conn.commit()
     conn.close()
 
+
 def gerar_grafico_prioridade():
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
 
     df = pd.read_sql_query("""
         SELECT prioridade
@@ -53,29 +69,36 @@ def gerar_grafico_prioridade():
 
     conn.close()
 
-    pasta_graficos = os.path.join('static', 'graficos')
+    caminho_grafico = os.path.join(GRAFICOS_FOLDER, 'prioridade.png')
 
-    if not os.path.exists(pasta_graficos):
-        os.makedirs(pasta_graficos)
-
-    caminho_grafico = os.path.join(pasta_graficos, 'prioridade.png')
+    plt.figure(figsize=(6, 4))
 
     if len(df) > 0:
-        plt.figure(figsize=(6, 4))
         df['prioridade'].value_counts().plot(kind='bar')
         plt.title('Chamados por Prioridade')
         plt.xlabel('Prioridade')
         plt.ylabel('Quantidade')
-        plt.tight_layout()
-        plt.savefig(caminho_grafico)
-        plt.close()
+    else:
+        plt.text(
+            0.5,
+            0.5,
+            'Nenhum chamado cadastrado',
+            horizontalalignment='center',
+            verticalalignment='center'
+        )
+        plt.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(caminho_grafico)
+    plt.close()
+
 
 @app.route('/')
 def home():
     if 'usuario_id' not in session:
         return redirect('/login')
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM usuarios")
@@ -115,16 +138,22 @@ def salvar_usuario():
     email = request.form['email']
     senha = request.form['senha']
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO usuarios
-        (nome, email, senha, perfil)
-        VALUES (?, ?, ?, ?)
-    """, (nome, email, senha, 'USUARIO'))
+    try:
+        cursor.execute("""
+            INSERT INTO usuarios
+            (nome, email, senha, perfil)
+            VALUES (?, ?, ?, ?)
+        """, (nome, email, senha, 'USUARIO'))
 
-    conn.commit()
+        conn.commit()
+
+    except sqlite3.IntegrityError:
+        conn.close()
+        return 'Este e-mail já está cadastrado.'
+
     conn.close()
 
     return redirect('/login')
@@ -140,7 +169,7 @@ def autenticar():
     email = request.form['email']
     senha = request.form['senha']
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -158,8 +187,8 @@ def autenticar():
         session['usuario_email'] = usuario[2]
         session['usuario_perfil'] = usuario[3]
         return redirect('/')
-    else:
-        return 'Email ou senha inválidos.'
+
+    return 'Email ou senha inválidos.'
 
 
 @app.route('/logout')
@@ -191,18 +220,10 @@ def salvar_chamado():
 
     if imagem and imagem.filename != '':
         nome_imagem = imagem.filename
-
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-
-        caminho_imagem = os.path.join(
-            app.config['UPLOAD_FOLDER'],
-            nome_imagem
-        )
-
+        caminho_imagem = os.path.join(app.config['UPLOAD_FOLDER'], nome_imagem)
         imagem.save(caminho_imagem)
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -230,6 +251,8 @@ def salvar_chamado():
     conn.commit()
     conn.close()
 
+    gerar_grafico_prioridade()
+
     return redirect('/')
 
 
@@ -238,7 +261,7 @@ def listar_chamados():
     if 'usuario_id' not in session:
         return redirect('/login')
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -256,6 +279,32 @@ def listar_chamados():
     )
 
 
+@app.route('/chamado/<int:id>')
+def detalhe_chamado(id):
+    if 'usuario_id' not in session:
+        return redirect('/login')
+
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM chamados
+        WHERE id = ?
+    """, (id,))
+
+    chamado = cursor.fetchone()
+    conn.close()
+
+    if chamado is None:
+        return redirect('/chamados')
+
+    return render_template(
+        'detalhe_chamado.html',
+        chamado=chamado
+    )
+
+
 @app.route('/status/<int:id>/<status>')
 def atualizar_status(id, status):
     if 'usuario_id' not in session:
@@ -263,7 +312,7 @@ def atualizar_status(id, status):
 
     status = status.replace('_', ' ')
 
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -275,12 +324,25 @@ def atualizar_status(id, status):
     conn.commit()
     conn.close()
 
+    gerar_grafico_prioridade()
+
     return redirect('/chamados')
+
+
+@app.route('/uploads/<filename>')
+def ver_upload(filename):
+    if 'usuario_id' not in session:
+        return redirect('/login')
+
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER'],
+        filename
+    )
+
 
 @app.route('/api/chamados')
 def api_chamados():
-
-    conn = sqlite3.connect('database.db')
+    conn = conectar_banco()
     conn.row_factory = sqlite3.Row
 
     cursor = conn.cursor()
@@ -296,13 +358,11 @@ def api_chamados():
     """)
 
     chamados = cursor.fetchall()
-
     conn.close()
 
     resultado = []
 
     for chamado in chamados:
-
         resultado.append({
             "id": chamado["id"],
             "titulo": chamado["titulo"],
@@ -313,7 +373,11 @@ def api_chamados():
 
     return jsonify(resultado)
 
+
+criar_pastas()
 criar_banco()
+gerar_grafico_prioridade()
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
