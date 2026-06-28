@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 import sqlite3
 import os
+from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib
 
@@ -25,6 +26,10 @@ def criar_pastas():
 
 def conectar_banco():
     return sqlite3.connect(os.path.join(BASE_DIR, 'database.db'))
+
+
+def data_hora_brasil():
+    return (datetime.utcnow() - timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def criar_banco():
@@ -262,12 +267,13 @@ def salvar_chamado():
             imagem
         )
         VALUES
-        (?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)
+        (?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descricao,
         prioridade,
         'ABERTO',
+        data_hora_brasil(),
         usuario_id,
         nome_imagem
     ))
@@ -277,11 +283,12 @@ def salvar_chamado():
     cursor.execute("""
         INSERT INTO timeline
         (chamado_id, usuario_id, acao, data_acao)
-        VALUES (?, ?, ?, datetime('now', 'localtime'))
+        VALUES (?, ?, ?, ?)
     """, (
         chamado_id,
         usuario_id,
-        'Chamado criado'
+        'Chamado criado',
+        data_hora_brasil()
     ))
 
     conn.commit()
@@ -407,21 +414,23 @@ def comentar_chamado(chamado_id):
     cursor.execute("""
         INSERT INTO comentarios
         (chamado_id, usuario_id, comentario, data_comentario)
-        VALUES (?, ?, ?, datetime('now', 'localtime'))
+        VALUES (?, ?, ?, ?)
     """, (
         chamado_id,
         session['usuario_id'],
-        comentario
+        comentario,
+        data_hora_brasil()
     ))
 
     cursor.execute("""
         INSERT INTO timeline
         (chamado_id, usuario_id, acao, data_acao)
-        VALUES (?, ?, ?, datetime('now', 'localtime'))
+        VALUES (?, ?, ?, ?)
     """, (
         chamado_id,
         session['usuario_id'],
-        'Novo comentário adicionado'
+        'Novo comentário adicionado',
+        data_hora_brasil()
     ))
 
     conn.commit()
@@ -449,11 +458,12 @@ def atualizar_status(id, status):
     cursor.execute("""
         INSERT INTO timeline
         (chamado_id, usuario_id, acao, data_acao)
-        VALUES (?, ?, ?, datetime('now', 'localtime'))
+        VALUES (?, ?, ?, ?)
     """, (
         id,
         session['usuario_id'],
-        f'Status alterado para {status}'
+        f'Status alterado para {status}',
+        data_hora_brasil()
     ))
 
     conn.commit()
