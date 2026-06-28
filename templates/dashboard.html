@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="mb-4">
+    <h2 class="page-title">Dashboard</h2>
+    <p class="text-muted">Bem-vindo, {{ nome }}! Acompanhe seus chamados.</p>
+</div>
+
+<div class="row g-4">
+
+    <div class="col-md-3">
+        <div class="card card-dashboard shadow-sm border-0">
+            <div class="card-body">
+                <p class="text-muted mb-1">Usuários</p>
+                <h2 class="fw-bold">{{ total_usuarios }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card card-dashboard shadow-sm border-0">
+            <div class="card-body">
+                <p class="text-muted mb-1">Chamados</p>
+                <h2 class="fw-bold">{{ total_chamados }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card card-dashboard shadow-sm border-0">
+            <div class="card-body">
+                <p class="text-muted mb-1">Abertos</p>
+                <h2 class="fw-bold text-primary">{{ chamados_abertos }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card card-dashboard shadow-sm border-0">
+            <div class="card-body">
+                <p class="text-muted mb-1">Concluídos</p>
+                <h2 class="fw-bold text-success">{{ chamados_concluidos }}</h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-body">
+        <h5 class="fw-bold">Chamados por Prioridade</h5>
+
+        <img src="{{ url_for('static', filename='graficos/prioridade.png') }}"
+             class="img-fluid mt-3"
+             alt="Gráfico de chamados por prioridade">
+    </div>
+</div>
+
+{% endblock %}

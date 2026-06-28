@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+
+        <h2 class="fw-bold mb-4">Abrir Novo Chamado</h2>
+
+        <form action="/salvar_chamado" method="POST" enctype="multipart/form-data">
+
+            <div class="mb-3">
+                <label class="form-label">Título</label>
+                <input type="text" name="titulo" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                <textarea name="descricao" class="form-control" rows="5" required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Prioridade</label>
+                <select name="prioridade" class="form-select" required>
+                    <option value="BAIXA">Baixa</option>
+                    <option value="MEDIA">Média</option>
+                    <option value="ALTA">Alta</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Anexar imagem</label>
+                <input type="file" name="imagem" class="form-control" accept=".jpg,.jpeg,.png">
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Salvar Chamado
+            </button>
+
+            <a href="/" class="btn btn-secondary">
+                Cancelar
+            </a>
+
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

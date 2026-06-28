@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold">Lista de Chamados</h2>
+
+    <a href="/novo-chamado" class="btn btn-primary">
+        Novo Chamado
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+
+        <table class="table table-hover align-middle">
+
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Título</th>
+                    <th>Prioridade</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for chamado in chamados %}
+                <tr>
+                    <td>{{ chamado[0] }}</td>
+                    <td>{{ chamado[1] }}</td>
+
+                    <td>
+                        {% if chamado[3] == 'ALTA' %}
+                            <span class="badge bg-danger">Alta</span>
+                        {% elif chamado[3] == 'MEDIA' %}
+                            <span class="badge bg-warning text-dark">Média</span>
+                        {% else %}
+                            <span class="badge bg-success">Baixa</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if chamado[4] == 'ABERTO' %}
+                            <span class="badge bg-primary">Aberto</span>
+                        {% elif chamado[4] == 'EM ANDAMENTO' %}
+                            <span class="badge bg-warning text-dark">Em Andamento</span>
+                        {% elif chamado[4] == 'CONCLUIDO' %}
+                            <span class="badge bg-success">Concluído</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ chamado[5] }}</td>
+
+                    <td>
+                        <a href="/status/{{ chamado[0] }}/ABERTO" class="btn btn-outline-primary btn-sm">
+                            Aberto
+                        </a>
+
+                        <a href="/status/{{ chamado[0] }}/EM_ANDAMENTO" class="btn btn-outline-warning btn-sm">
+                            Andamento
+                        </a>
+
+                        <a href="/status/{{ chamado[0] }}/CONCLUIDO" class="btn btn-outline-success btn-sm">
+                            Concluir
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+
+    </div>
+</div>
+
+{% endblock %}
