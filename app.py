@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, jsonify, s
 import sqlite3
 import os
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
 import pandas as pd
 import matplotlib
 
@@ -30,6 +31,19 @@ def conectar_banco():
 
 def data_hora_brasil():
     return (datetime.utcnow() - timedelta(hours=3)).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def salvar_arquivo(arquivo):
+    if not arquivo or arquivo.filename == '':
+        return ''
+
+    nome_seguro = secure_filename(arquivo.filename)
+    nome_final = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}_{nome_seguro}"
+
+    caminho_arquivo = os.path.join(app.config['UPLOAD_FOLDER'], nome_final)
+    arquivo.save(caminho_arquivo)
+
+    return nome_final
 
 
 def criar_banco():
@@ -81,6 +95,18 @@ def criar_banco():
             data_acao DATETIME,
             FOREIGN KEY(chamado_id) REFERENCES chamados(id),
             FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS anexos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chamado_id INTEGER NOT NULL,
+            comentario_id INTEGER,
+            nome_arquivo TEXT NOT NULL,
+            data_anexo DATETIME,
+            FOREIGN KEY(chamado_id) REFERENCES chamados(id),
+            FOREIGN KEY(comentario_id) REFERENCES comentarios(id)
         )
     """)
 
@@ -244,14 +270,6 @@ def salvar_chamado():
     prioridade = request.form['prioridade']
     usuario_id = session['usuario_id']
 
-    imagem = request.files.get('imagem')
-    nome_imagem = ''
-
-    if imagem and imagem.filename != '':
-        nome_imagem = imagem.filename
-        caminho_imagem = os.path.join(app.config['UPLOAD_FOLDER'], nome_imagem)
-        imagem.save(caminho_imagem)
-
     conn = conectar_banco()
     cursor = conn.cursor()
 
@@ -275,10 +293,31 @@ def salvar_chamado():
         'ABERTO',
         data_hora_brasil(),
         usuario_id,
-        nome_imagem
+        ''
     ))
 
     chamado_id = cursor.lastrowid
+
+    arquivos = request.files.getlist('anexos')
+
+    total_anexos = 0
+
+    for arquivo in arquivos:
+        nome_arquivo = salvar_arquivo(arquivo)
+
+        if nome_arquivo:
+            total_anexos += 1
+
+            cursor.execute("""
+                INSERT INTO anexos
+                (chamado_id, comentario_id, nome_arquivo, data_anexo)
+                VALUES (?, ?, ?, ?)
+            """, (
+                chamado_id,
+                None,
+                nome_arquivo,
+                data_hora_brasil()
+            ))
 
     cursor.execute("""
         INSERT INTO timeline
@@ -290,6 +329,18 @@ def salvar_chamado():
         'Chamado criado',
         data_hora_brasil()
     ))
+
+    if total_anexos > 0:
+        cursor.execute("""
+            INSERT INTO timeline
+            (chamado_id, usuario_id, acao, data_acao)
+            VALUES (?, ?, ?, ?)
+        """, (
+            chamado_id,
+            usuario_id,
+            f'{total_anexos} anexo(s) adicionado(s) ao chamado',
+            data_hora_brasil()
+        ))
 
     conn.commit()
     conn.close()
@@ -388,13 +439,42 @@ def detalhe_chamado(id):
 
     timeline = cursor.fetchall()
 
+    cursor.execute("""
+        SELECT
+            id,
+            nome_arquivo,
+            strftime('%d/%m/%Y %H:%M:%S', data_anexo) AS data_anexo,
+            comentario_id
+        FROM anexos
+        WHERE chamado_id = ?
+        ORDER BY id ASC
+    """, (id,))
+
+    anexos = cursor.fetchall()
+
     conn.close()
+
+    anexos_chamado = []
+    anexos_por_comentario = {}
+
+    for anexo in anexos:
+        comentario_id = anexo[3]
+
+        if comentario_id is None:
+            anexos_chamado.append(anexo)
+        else:
+            if comentario_id not in anexos_por_comentario:
+                anexos_por_comentario[comentario_id] = []
+
+            anexos_por_comentario[comentario_id].append(anexo)
 
     return render_template(
         'detalhe_chamado.html',
         chamado=chamado,
         comentarios=comentarios,
-        timeline=timeline
+        timeline=timeline,
+        anexos_chamado=anexos_chamado,
+        anexos_por_comentario=anexos_por_comentario
     )
 
 
@@ -405,7 +485,9 @@ def comentar_chamado(chamado_id):
 
     comentario = request.form['comentario']
 
-    if comentario.strip() == '':
+    arquivos = request.files.getlist('anexos')
+
+    if comentario.strip() == '' and all(arquivo.filename == '' for arquivo in arquivos):
         return redirect(f'/chamado/{chamado_id}')
 
     conn = conectar_banco()
@@ -422,6 +504,27 @@ def comentar_chamado(chamado_id):
         data_hora_brasil()
     ))
 
+    comentario_id = cursor.lastrowid
+
+    total_anexos = 0
+
+    for arquivo in arquivos:
+        nome_arquivo = salvar_arquivo(arquivo)
+
+        if nome_arquivo:
+            total_anexos += 1
+
+            cursor.execute("""
+                INSERT INTO anexos
+                (chamado_id, comentario_id, nome_arquivo, data_anexo)
+                VALUES (?, ?, ?, ?)
+            """, (
+                chamado_id,
+                comentario_id,
+                nome_arquivo,
+                data_hora_brasil()
+            ))
+
     cursor.execute("""
         INSERT INTO timeline
         (chamado_id, usuario_id, acao, data_acao)
@@ -432,6 +535,18 @@ def comentar_chamado(chamado_id):
         'Novo comentário adicionado',
         data_hora_brasil()
     ))
+
+    if total_anexos > 0:
+        cursor.execute("""
+            INSERT INTO timeline
+            (chamado_id, usuario_id, acao, data_acao)
+            VALUES (?, ?, ?, ?)
+        """, (
+            chamado_id,
+            session['usuario_id'],
+            f'{total_anexos} anexo(s) adicionado(s) ao comentário',
+            data_hora_brasil()
+        ))
 
     conn.commit()
     conn.close()

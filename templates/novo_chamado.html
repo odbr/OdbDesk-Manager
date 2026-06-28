@@ -5,36 +5,61 @@
 <div class="card shadow-sm border-0">
     <div class="card-body">
 
-        <h2 class="fw-bold mb-4">Abrir Novo Chamado</h2>
+        <h2 class="fw-bold mb-2">Abrir Novo Chamado</h2>
 
-        <form action="/salvar_chamado" method="POST" enctype="multipart/form-data">
+        <p class="text-muted mb-4">
+            Preencha as informações abaixo e, se necessário, anexe um ou mais arquivos.
+        </p>
+
+        <form action="/salvar_chamado"
+              method="POST"
+              enctype="multipart/form-data">
 
             <div class="mb-3">
-                <label class="form-label">Título</label>
-                <input type="text" name="titulo" class="form-control" required>
+                <label class="form-label fw-bold">Título</label>
+                <input type="text"
+                       name="titulo"
+                       class="form-control"
+                       placeholder="Ex: Erro ao imprimir receita"
+                       required>
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Descrição</label>
-                <textarea name="descricao" class="form-control" rows="5" required></textarea>
+                <label class="form-label fw-bold">Descrição</label>
+                <textarea name="descricao"
+                          class="form-control"
+                          rows="5"
+                          placeholder="Descreva o problema com detalhes..."
+                          required></textarea>
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Prioridade</label>
-                <select name="prioridade" class="form-select" required>
+                <label class="form-label fw-bold">Prioridade</label>
+                <select name="prioridade"
+                        class="form-select"
+                        required>
                     <option value="BAIXA">Baixa</option>
                     <option value="MEDIA">Média</option>
                     <option value="ALTA">Alta</option>
                 </select>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Anexar imagem</label>
-                <input type="file" name="imagem" class="form-control" accept=".jpg,.jpeg,.png">
+            <div class="mb-4">
+                <label class="form-label fw-bold">Anexos</label>
+
+                <input type="file"
+                       name="anexos"
+                       class="form-control"
+                       accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                       multiple>
+
+                <small class="text-muted">
+                    Você pode selecionar vários arquivos de uma vez.
+                </small>
             </div>
 
             <button type="submit" class="btn btn-primary">
-                Salvar Chamado
+                Abrir Chamado
             </button>
 
             <a href="/" class="btn btn-secondary">
