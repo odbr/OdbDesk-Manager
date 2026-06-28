@@ -5,8 +5,39 @@ import os
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_do_sistema'
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def criar_banco():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        senha TEXT NOT NULL,
+        perfil TEXT NOT NULL
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS chamados (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descricao TEXT,
+        prioridade TEXT NOT NULL,
+        status TEXT NOT NULL,
+        data_abertura DATETIME,
+        usuario_id INTEGER,
+        imagem TEXT,
+        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    )
+    """)
+
+    conn.commit()
+    conn.close()
 
 
 @app.route('/')
@@ -250,5 +281,8 @@ def api_chamados():
 
     return jsonify(resultado)
 
+criar_banco()
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
